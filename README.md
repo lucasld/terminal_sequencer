@@ -18,5 +18,6 @@
         - channel 0: encodes sequencer properties like note placement, loop placement
         - channel 1: exlusively encodes 'runner' positions. runners are the different 'note exiters' that move one step right each beat (better word for runner?)
         - channel 2: encodes additional information for elements from channel 0, as of yet only order of looper placement
-        - channel 3: encodes information related to the runners (channel 1), as of yet only last looper that was hit (to know which looper to enable next)
+        - channel 3: encodes number of last hit closing loop element
+        - channel 4: encodes number of last hit opening loop element
 

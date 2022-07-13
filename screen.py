@@ -2,9 +2,9 @@ import numpy as np
 from pynput import keyboard
 import curses
 import time
-import os
 
-class Screen:
+
+class Grid:
     def __init__(self, bpm=120):
         # init listener
         listener = keyboard.Listener(on_press=self.on_press, on_release=self.on_release)
@@ -12,21 +12,27 @@ class Screen:
         # init screen
         self.console = curses.initscr()
         curses.start_color()
-        # hyperparameters
+        # parameters
         self.HEIGHT, self.WIDTH = self.console.getmaxyx()
-        self.BPM = bpm
-        self.Y, self.X = 0, 0
+        self.BPM = bpm  # global bpm
+        self.Y, self.X = 0, 0  # y and x position of the selector
         # character symbols
-        self.empty_space = '.'
-        self.timeline_position = '|'
-        self.note_pos = '@'
+        self.empty_space_chr = '.'
+        self.runner_chr = '|'
+        self.note_chr = '@'
+        self.loop_begin_chr = '['
+        self.loop_end_chr = ']'
+        # keys
+        self.set_runner = 'e'
+        self.set_note = 'x'
+        self.loop_begin = '['
+        self.loop_end = ']'
         # init display matrix
         self.init_screen_matrix()
 
-
     def init_screen_matrix(self):
-        self.screen = np.empty((self.HEIGHT-1, self.WIDTH-1, 2), dtype=str)
-        self.screen[self.screen == ''] = self.empty_space
+        self.screen = np.empty((self.HEIGHT-1, self.WIDTH-1, 5), dtype='U3')
+        self.screen[self.screen == ''] = self.empty_space_chr
 
     def on_press(self, key):
         if type(key) == keyboard.Key:
@@ -38,11 +44,21 @@ class Screen:
                 self.Y, self.X, _ = self.move_coord(self.Y, self.X, (0, -1))
             elif key == key.right:
                 self.Y, self.X, _ = self.move_coord(self.Y, self.X, (0, 1))
+            elif key == key.backspace:
+                self.screen[self.Y, self.X, :] = self.empty_space_chr
         elif type(key) == keyboard.KeyCode:
-            if key.char == "e":
-                self.screen[self.Y, self.X, 1] = self.timeline_position
-            if key.char == "x":
-                self.screen[self.Y, self.X, 0] = self.note_pos
+            if key.char == self.set_runner:
+                self.screen[self.Y, self.X, 1] = self.runner_chr
+                self.screen[self.Y, self.X, 3] = '-1'
+                self.screen[self.Y, self.X, 4] = '-1'
+            elif key.char == self.set_note:
+                self.screen[self.Y, self.X, 0] = self.note_chr
+            elif key.char == self.loop_begin:
+                self.screen[self.Y, self.X, 0] = self.loop_begin_chr
+                self.screen[self.Y, self.X, 2] = str(sum(self.screen[self.Y, :, 0] == self.loop_begin_chr) - 1)
+            elif key.char == self.loop_end:
+                self.screen[self.Y, self.X, 0] = self.loop_end_chr
+                self.screen[self.Y, self.X, 2] = str(sum(self.screen[self.Y, :, 0] == self.loop_end_chr) - 1)
         
     def on_release(self, key):
         if key == keyboard.Key.esc:
@@ -54,10 +70,10 @@ class Screen:
         for y in range(self.screen.shape[0]):
             for x in range(self.screen.shape[1]):
                 color = curses.A_STANDOUT if y==self.Y and x==self.X else curses.COLOR_BLACK
-                if self.screen[y, x, 1] == self.empty_space:
+                if self.screen[y, x, 1] == self.empty_space_chr:
                     character = self.screen[y, x, 0]
                 else:
-                    if self.screen[y, x, 0] == self.note_pos and self.screen[y, x, 1] == self.timeline_position: 
+                    if self.screen[y, x, 0] == self.note_chr and self.screen[y, x, 1] == self.runner_chr: 
                         character = self.screen[y, x, 0]
                         color = curses.A_STANDOUT
                     else:
@@ -82,7 +98,44 @@ class Screen:
         curses.resizeterm(self.HEIGHT, self.WIDTH)
         self.init_screen_matrix()
         self.console.clear()
-        self.console.refresh() 
+        self.console.refresh()
+
+    def _get_start_pos(self, y, x, last_begin_loop):
+        begin_loop_pos = np.argwhere(self.screen[y, :, 0] == self.loop_begin_chr)
+        begin_loop_pos = [e for e in begin_loop_pos if e < x]
+        if not len(begin_loop_pos):
+            # there is no begin loop set, go back to line beginning instead
+            return 0, -1
+        last_begin_loop += 1
+        if last_begin_loop >= len(begin_loop_pos):
+            last_begin_loop = 0
+        return np.argwhere(self.screen[y, :, 2] == str(last_begin_loop))[0,0] + 1, last_begin_loop
+    
+    def move_runner(self):
+        for y, x, _ in np.argwhere(self.screen == self.runner_chr)[::-1]:
+            # get next position and if that next position is offscreen
+            _, nx, movable = self.move_coord(y, x, (0, 1))
+            self.screen[y, x, 1] = self.empty_space_chr
+            last_endloop = int(self.screen[y, x, 3])
+            last_beginloop = int(self.screen[y, x, 4])
+            self.screen[y, x, 3] = self.empty_space_chr
+            self.screen[y, x, 4] = self.empty_space_chr
+            if movable:
+                # check for loop
+                end_loop_pos = np.argwhere(self.screen[y, :, 0] == self.loop_end_chr)
+                if nx in end_loop_pos:
+                    if nx == max(end_loop_pos):
+                        last_endloop = self.screen[y, nx, 2]
+                        nx, last_beginloop = self._get_start_pos(y, x, last_beginloop)
+                    elif int(self.screen[y, nx, 2]) == last_endloop + 1:
+                        last_endloop = self.screen[y, nx, 2]
+                        nx, last_beginloop = self._get_start_pos(y, x, last_beginloop)
+                    elif last_endloop + 1 >= len(end_loop_pos) and self.screen[y, nx, 2] == '0':
+                        last_endloop = self.screen[y, nx, 2]
+                        nx, last_beginloop = self._get_start_pos(y, x, last_beginloop)
+                self.screen[y, nx, 1] = self.runner_chr
+                self.screen[y, nx, 3] = str(last_endloop)
+                self.screen[y, nx, 4] = str(last_beginloop)
 
     def draw(self):
         self.draw_screen()
@@ -95,18 +148,13 @@ class Screen:
             if nt - t >= 60 / self.BPM:
                 t = nt
                 self.screen[0, -1, 0] = 'O' if self.screen[0, -1, 0] != 'O' else 'o'
-                for y, x, z in np.argwhere(self.screen == self.timeline_position)[::-1]:
-                    ny, nx, moved = self.move_coord(y, x, (0, 1))
-                    self.screen[y, x, z] = self.empty_space
-                    if moved:
-                            self.screen[ny, nx, z] = self.timeline_position
-
-                            
-            if i==250000:
+                self.move_runner()
+            # draw screen after number of iterations (replace by frames/seconds)
+            if i==250_000:
                 self.draw_screen()
                 i=0
 
 
 if __name__ == "__main__":
-    screen = Screen()
-    screen.draw()
+    grid = Grid(240)
+    grid.draw()
