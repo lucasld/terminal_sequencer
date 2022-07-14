@@ -29,10 +29,13 @@ class Grid:
         self.loop_end = ']'
         # init display matrix
         self.init_screen_matrix()
+        # save bpms as keys and as items the corresponding rows, time
+        self.bpms = {self.BPM:[list(range(self.screen.shape[0])), 0]}
+
 
     def init_screen_matrix(self):
         self.screen = np.empty((self.HEIGHT-1, self.WIDTH-1, 5), dtype='U3')
-        self.screen[self.screen == ''] = self.empty_space_chr
+        self.screen[True] = self.empty_space_chr
 
     def on_press(self, key):
         if type(key) == keyboard.Key:
@@ -45,6 +48,8 @@ class Grid:
             elif key == key.right:
                 self.Y, self.X, _ = self.move_coord(self.Y, self.X, (0, 1))
             elif key == key.backspace:
+                if self.screen[self.Y, self.X, 0] == self.empty_space_chr:
+                    self.Y, self.X, _ = self.move_coord(self.Y, self.X, (0, -1))
                 self.screen[self.Y, self.X, :] = self.empty_space_chr
         elif type(key) == keyboard.KeyCode:
             if key.char == self.set_runner:
@@ -59,6 +64,26 @@ class Grid:
             elif key.char == self.loop_end:
                 self.screen[self.Y, self.X, 0] = self.loop_end_chr
                 self.screen[self.Y, self.X, 2] = str(sum(self.screen[self.Y, :, 0] == self.loop_end_chr) - 1)
+            else:
+                self.screen[self.Y, self.X, 0] = key.char
+                self.Y, self.X, _ = self.move_coord(self.Y, self.X, (0, 1))
+            
+            joined_row = ''.join(self.screen[self.Y, :, 0]) 
+            if 'bpm' in joined_row:
+                i = joined_row.index('bpm')
+                for j in range(i-1, -1, -1):
+                    if not joined_row[j].isnumeric():
+                        j += 1
+                        break
+                if i-j > 1:
+                    #print(joitype(i),type(j))
+                    if int(joined_row[j:i]) in self.bpms.keys():
+                        self.bpms[int(joined_row[j:i])][0].add(self.Y)
+                    else:
+                        self.bpms[int(joined_row[j:i])] = [{self.Y}, time.time()]
+                    # remove row from global bpm
+                    if self.Y in self.bpms[self.BPM][0]:
+                        self.bpms[self.BPM][0].remove(self.Y)
         
     def on_release(self, key):
         if key == keyboard.Key.esc:
@@ -111,8 +136,8 @@ class Grid:
             last_begin_loop = 0
         return np.argwhere(self.screen[y, :, 2] == str(last_begin_loop))[0,0] + 1, last_begin_loop
     
-    def move_runner(self):
-        for y, x, _ in np.argwhere(self.screen == self.runner_chr)[::-1]:
+    def move_runner(self, rows):
+        for y, x, _ in [e for e in np.argwhere(self.screen==self.runner_chr)[::-1] if e[0] in list(rows)]:
             # get next position and if that next position is offscreen
             _, nx, movable = self.move_coord(y, x, (0, 1))
             self.screen[y, x, 1] = self.empty_space_chr
@@ -139,16 +164,19 @@ class Grid:
 
     def draw(self):
         self.draw_screen()
-        t = time.time()
+        print(0)
+        #self.bpms[self.BPM][1] = time.time()
         i=0
         while True:
             self.update_size()
             i+=1
             nt = time.time()
-            if nt - t >= 60 / self.BPM:
-                t = nt
-                self.screen[0, -1, 0] = 'O' if self.screen[0, -1, 0] != 'O' else 'o'
-                self.move_runner()
+            for bpm, (rows, t) in dict(self.bpms).items():
+                if nt - t >= 60/bpm:
+                    self.screen[list(rows), -1, 0] = 'O' if self.screen[list(rows)[0], -1, 0] != 'O' else 'o'
+                    self.move_runner(rows)
+                    self.bpms[bpm][1] = nt
+            
             # draw screen after number of iterations (replace by frames/seconds)
             if i==250_000:
                 self.draw_screen()
