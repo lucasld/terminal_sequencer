@@ -94,10 +94,12 @@ class Grid:
         self.console.erase()
         for y in range(self.screen.shape[0]):
             for x in range(self.screen.shape[1]):
+                # highlight when selector position
                 color = curses.A_STANDOUT if y==self.Y and x==self.X else curses.COLOR_BLACK
                 if self.screen[y, x, 1] == self.empty_space_chr:
                     character = self.screen[y, x, 0]
                 else:
+                    # highlight note when runner is on it
                     if self.screen[y, x, 0] == self.note_chr and self.screen[y, x, 1] == self.runner_chr: 
                         character = self.screen[y, x, 0]
                         color = curses.A_STANDOUT
@@ -168,17 +170,20 @@ class Grid:
         #self.bpms[self.BPM][1] = time.time()
         i=0
         while True:
-            self.update_size()
+            #self.update_size()
             i+=1
             nt = time.time()
             for bpm, (rows, t) in dict(self.bpms).items():
                 if nt - t >= 60/bpm:
+                    # visualize tempo
                     self.screen[list(rows), -1, 0] = 'O' if self.screen[list(rows)[0], -1, 0] != 'O' else 'o'
+                    # move the runner
                     self.move_runner(rows)
                     self.bpms[bpm][1] = nt
             
             # draw screen after number of iterations (replace by frames/seconds)
             if i==250_000:
+                self.update_size()
                 self.draw_screen()
                 i=0
 
