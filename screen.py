@@ -2,6 +2,8 @@ import numpy as np
 from pynput import keyboard
 import curses
 import time
+import pygame
+import configparser
 
 
 class Grid:
@@ -23,7 +25,7 @@ class Grid:
         self.loop_begin_chr = '['
         self.loop_end_chr = ']'
         # keys
-        self.set_runner = 'e'
+        self.set_runner = '0'
         self.set_note = 'x'
         self.loop_begin = '['
         self.loop_end = ']'
@@ -31,6 +33,16 @@ class Grid:
         self.init_screen_matrix()
         # save bpms as keys and as items the corresponding rows, time
         self.bpms = {self.BPM:[list(range(self.screen.shape[0])), 0]}
+        pygame.mixer.init()
+        self.current_channel = 0
+        self.channel_number = 500
+        pygame.mixer.set_num_channels(self.channel_number)
+        self.sound = pygame.mixer.Sound("sound.mp3")
+        config = configparser.ConfigParser()
+        config.read('config.txt')
+        self.sounds = dict(config.items('DEFAULT'))
+        for key, path in self.sounds.items():
+            self.sounds[key] = pygame.mixer.Sound(path)
 
 
     def init_screen_matrix(self):
@@ -64,6 +76,9 @@ class Grid:
             elif key.char == self.loop_end:
                 self.screen[self.Y, self.X, 0] = self.loop_end_chr
                 self.screen[self.Y, self.X, 2] = str(sum(self.screen[self.Y, :, 0] == self.loop_end_chr) - 1)
+            elif key.char in self.sounds.keys():
+                self.screen[self.Y, self.X, 0] = self.note_chr
+                self.screen[self.Y, self.X, 2] = key.char
             else:
                 self.screen[self.Y, self.X, 0] = key.char
                 self.Y, self.X, _ = self.move_coord(self.Y, self.X, (0, 1))
@@ -94,7 +109,7 @@ class Grid:
         self.console.erase()
         for y in range(self.screen.shape[0]):
             for x in range(self.screen.shape[1]):
-                # highlight when selector position
+                # highlight and play when selector position
                 color = curses.A_STANDOUT if y==self.Y and x==self.X else curses.COLOR_BLACK
                 if self.screen[y, x, 1] == self.empty_space_chr:
                     character = self.screen[y, x, 0]
@@ -163,6 +178,14 @@ class Grid:
                 self.screen[y, nx, 1] = self.runner_chr
                 self.screen[y, nx, 3] = str(last_endloop)
                 self.screen[y, nx, 4] = str(last_beginloop)
+            # check if note is hit and play
+            if self.screen[y, nx, 0] == self.note_chr:
+                pygame.mixer.Channel(self.current_channel).play(self.sounds[self.screen[y, nx, 2]])
+                self.current_channel += 1
+                if self.current_channel >= self.channel_number - 1:
+                    self.current_channel = 0
+                #pygame.mixer.Sound.play(self.sound)
+
 
     def draw(self):
         self.draw_screen()
