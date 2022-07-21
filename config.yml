@@ -1,0 +1,30 @@
+---
+sounds:  # a sounds key and it's path
+    a:    sounds/dmk00_original/dmk00__024-c0.wav
+    b:    sounds/dmk00_original/dmk00__025-c#0.wav
+    c:    sounds/dmk00_original/dmk00__026-d0.wav
+    d:    sounds/dmk00_original/dmk00__027-d#0.wav
+    e:    sounds/dmk00_original/dmk00__028-e0.wav
+    f:    sounds/dmk00_original/dmk00__029-f0.wav
+    g:    sounds/dmk00_original/dmk00__030-f#0.wav
+    h:    sounds/dmk00_original/dmk00__031-g0.wav
+    i:    sounds/dmk00_original/dmk00__032-g#0.wav
+    j:    sounds/dmk00_original/dmk00__033-a0.wav
+
+
+keyboard:  # keys for different actions
+    set_runner: "key.enter"
+    loop_begin: "["
+    loop_end: "]"
+
+
+grid:  # parameters related to the grid
+    ticks: 4  #  tick-marking distance
+    global_bpm: 120
+    empty_space_chr: "."
+    runner_chr: "|"
+    loop_begin_chr: "["
+    loop_end_chr: "]"
+
+
+frame_rate: 12
