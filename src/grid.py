@@ -1,3 +1,5 @@
+from ast import JoinedStr
+from ntpath import join
 import numpy as np
 import curses
 
@@ -21,24 +23,30 @@ class Grid:
         curses.use_default_colors()
         curses.init_pair(1, curses.COLOR_YELLOW, curses.COLOR_YELLOW)
         curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_BLACK)
-        curses.init_pair(3, curses.COLOR_WHITE, 235)
-        curses.init_pair(4, -1, curses.COLOR_WHITE)
+        curses.init_pair(3, curses.COLOR_GREEN, curses.COLOR_BLACK)
+        curses.init_pair(4, curses.COLOR_WHITE, 235)
+        curses.init_pair(5, curses.COLOR_GREEN, 235)
+        curses.init_pair(6, -1, curses.COLOR_WHITE)
         #for i in range(0, curses.COLORS):
         #    curses.init_pair(i + 1, i, -1)
         self.HEIGHT, self.WIDTH = self.console.getmaxyx()
         self.Y, self.X = 0, 0  # y and x position of the selector
 
-
         # initalize screen
         self.init_grid()
 
         # save bpms as keys and as items the corresponding rows, time
-        self.bpms = {self.global_bpm: [list(range(self.grid.shape[0])), 0]}
+        self.bpms = {self.global_bpm: [list(range(self.grid.shape[0]))[::2], 0]}
+
+        for bpm, (_, _) in self.bpms.items():
+            bpm_text = list(str(bpm) + 'bpm')
+            self.grid[::2, :len(bpm_text), 0] = bpm_text
     
     
     def init_grid(self):
         self.grid = np.empty((self.HEIGHT-1, self.WIDTH-1, 5), dtype='U3')
         self.grid[True] = self.empty_space_chr
+        self.grid[:, :self.begin_grid_index - 1, 0] = ' '
         self.grid[1::2, :, 0] = ' '
         self.grid[::2, self.begin_grid_index - 1, 0] = '#'
         self.grid[1::2, self.begin_grid_index - 1, 0] = '#'
@@ -51,6 +59,27 @@ class Grid:
             self.grid[self.Y, x, 1] = self.runner_chr
             self.grid[self.Y, x, 3] = '-1'
             self.grid[self.Y, x, 4] = '-1'
+    
+    
+    def change_number(self, number: str):
+        """Takes number and changes it in the grid at location self.Y and self.X.
+        The function also tries to update the corresponding variable, f.e. self.bpms"""
+        if not self.Y % 2:
+            bpm_position = ''.join(self.grid[self.Y, :, 0]).index('bpm')
+            if self.X < bpm_position:
+                self.grid[self.Y, self.X, 0] = number
+                new_bpm = int(''.join(self.grid[self.Y, :, 0])[:bpm_position])
+                #if new_bpm == 0:
+                #    new_bpm = 1
+                #    self.grid[self.Y, 2, 0] = '1'
+                for bpm, (rows, _) in self.bpms.items():
+                    if self.Y in rows:
+                        rows.remove(self.Y)
+                        self.bpms[bpm][0] = rows
+                if new_bpm in self.bpms.keys():# and self.Y not in self.bpms[new_bpm][0]:
+                    self.bpms[new_bpm][0].append(self.Y)
+                else:
+                    self.bpms[new_bpm] = [[self.Y], 0]
 
     
     def move_coord(self, y: int, x: int, dir: tuple) -> tuple:
@@ -76,7 +105,7 @@ class Grid:
 
     def move_runners(self, time):
         for bpm, (rows, t) in dict(self.bpms).items():
-            if time - t >= 60/bpm:
+            if bpm > 0 and time - t >= 60/bpm:
                 self.bpms[bpm][1] = time
                 # iterate through all rows with bpm
                 for row in rows:
@@ -114,26 +143,36 @@ class Grid:
     
     def draw_grid(self):
         self.console.erase()
+        # iterate through grid
         for y in range(self.grid.shape[0]):
             for x in range(self.grid.shape[1]):
-                # highlight and play when selector position
-                #color = curses.color_pair(4) if y==self.Y and x==self.X else curses.COLOR_BLACK
+                # check if we are not dealing with a runner
                 if self.grid[y, x, 1] == self.empty_space_chr:
+                    # use character from channel 0
                     character = self.grid[y, x, 0]
                     if character == '#':
+                        # border color
                         color = curses.color_pair(1)
                     elif (y//2)%2:
-                        color = curses.color_pair(2)
+                        if character==self.empty_space_chr and (x + self.begin_grid_index - 1) % self.ticks == 0:
+                            color = curses.color_pair(3)
+                        else:
+                            color = curses.color_pair(2)
                     else:
-                        color = curses.color_pair(3)
+                        if character==self.empty_space_chr and (x + self.begin_grid_index - 1) % self.ticks == 0:
+                            color = curses.color_pair(5)
+                        else:
+                            color = curses.color_pair(4)
                 else:
                     # highlight note when runner is on it
                     if self.grid[y, x, 0] in self.sound_manager.sounds.keys() and self.grid[y, x, 1] == self.runner_chr: 
                         character = self.grid[y, x, 0]
-                        color = curses.A_STANDOUT
+                        color = curses.color_pair(6)
                     else:
                         character = self.grid[y, x, 1]
+                        color = curses.color_pair(2 if (y//2)%2 else 4)
+                # highlight and play when selector position
                 if y==self.Y and x==self.X:
-                    color = curses.color_pair(4)
+                    color = curses.color_pair(6)
                 self.console.addch(y, x, character, color)
         self.console.refresh()

@@ -34,6 +34,7 @@ class Keyboard:
                                                                    (0, 1))
             elif key == key.backspace:
                 self.grid.grid[self.grid.Y, self.grid.X, :] = self.grid.empty_space_chr
+                self.grid.change_number('0')
                 self.grid.Y, self.grid.X, _ = self.grid.move_coord(self.grid.Y,
                                                                    self.grid.X,
                                                                    (0, -1))
@@ -48,6 +49,8 @@ class Keyboard:
                 self.grid.grid[self.grid.Y, self.grid.X, 2] = str(sum(self.grid.grid[self.grid.Y, :, 0] == self.grid.loop_end_chr) - 1)
             elif key.char in self.grid.sound_manager.sounds.keys():
                 self.grid.grid[self.grid.Y, self.grid.X, 0] = key.char
+            elif key.char.isnumeric():
+                self.grid.change_number(key.char)
             
         
     def on_release(self, key):
