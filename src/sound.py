@@ -15,7 +15,8 @@ class Sound:
             self.sounds[key] = pygame.mixer.Sound(path)
     
 
-    def play(self, note):
+    def play(self, note: str, volume=1):
+        self.sounds[note].set_volume(volume)
         pygame.mixer.Channel(self.current_channel).play(self.sounds[note])
         self.current_channel += 1
         if self.current_channel >= self.channel_number - 1:

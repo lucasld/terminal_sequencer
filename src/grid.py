@@ -1,5 +1,6 @@
 from ast import JoinedStr
 from ntpath import join
+from numbers import Number
 import numpy as np
 import curses
 
@@ -37,10 +38,17 @@ class Grid:
 
         # save bpms as keys and as items the corresponding rows, time
         self.bpms = {self.global_bpm: [list(range(self.grid.shape[0]))[::2], 0]}
-
-        for bpm, (_, _) in self.bpms.items():
+        for bpm, (rows, _) in self.bpms.items():
             bpm_text = list(str(bpm) + 'bpm')
-            self.grid[::2, :len(bpm_text), 0] = bpm_text
+            self.grid[rows, :len(bpm_text), 0] = bpm_text
+
+        # volumes for each row
+        self.volumes = {row: 1 for row in range(self.grid.shape[0])[::2]}
+        for row, vol in self.volumes.items():
+            vol_text = list(str(round(vol * 100)) + '% vol')
+            self.grid[row+1, :len(vol_text), 0] = vol_text
+        
+
     
     
     def init_grid(self):
@@ -65,13 +73,11 @@ class Grid:
         """Takes number and changes it in the grid at location self.Y and self.X.
         The function also tries to update the corresponding variable, f.e. self.bpms"""
         if not self.Y % 2:
+            # change bpm
             bpm_position = ''.join(self.grid[self.Y, :, 0]).find('bpm')
             if bpm_position >= 0 and self.X < bpm_position:
                 self.grid[self.Y, self.X, 0] = number
                 new_bpm = int(''.join(self.grid[self.Y, :, 0])[:bpm_position])
-                #if new_bpm == 0:
-                #    new_bpm = 1
-                #    self.grid[self.Y, 2, 0] = '1'
                 for bpm, (rows, _) in self.bpms.items():
                     if self.Y in rows:
                         rows.remove(self.Y)
@@ -80,6 +86,16 @@ class Grid:
                     self.bpms[new_bpm][0].append(self.Y)
                 else:
                     self.bpms[new_bpm] = [[self.Y], 0]
+        else:
+            # change volume
+            vol_position = ''.join(self.grid[self.Y, :, 0]).find('% vol')
+            if vol_position >= 0 and self.X < vol_position:
+                new_vol = int(''.join(self.grid[self.Y, :, 0])[:vol_position])
+                if new_vol > 100:
+                    new_vol = 100
+                self.grid[self.Y, :vol_position, 0] = list(str(new_vol))
+                self.volumes[self.Y - 1] = new_vol/100
+
 
     
     def move_coord(self, y: int, x: int, dir: tuple) -> tuple:
@@ -140,7 +156,7 @@ class Grid:
                             self.grid[row, nx, 4] = str(last_beginloop)
                             # check if note is hit and play it
                             if self.grid[row, nx, 0] in self.sound_manager.sounds.keys():
-                                self.sound_manager.play(self.grid[row, nx, 0])
+                                self.sound_manager.play(self.grid[row, nx, 0], self.volumes[row])
 
     
     def draw_grid(self):
