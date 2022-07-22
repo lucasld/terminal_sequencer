@@ -65,8 +65,8 @@ class Grid:
         """Takes number and changes it in the grid at location self.Y and self.X.
         The function also tries to update the corresponding variable, f.e. self.bpms"""
         if not self.Y % 2:
-            bpm_position = ''.join(self.grid[self.Y, :, 0]).index('bpm')
-            if self.X < bpm_position:
+            bpm_position = ''.join(self.grid[self.Y, :, 0]).find('bpm')
+            if bpm_position >= 0 and self.X < bpm_position:
                 self.grid[self.Y, self.X, 0] = number
                 new_bpm = int(''.join(self.grid[self.Y, :, 0])[:bpm_position])
                 #if new_bpm == 0:
@@ -109,6 +109,8 @@ class Grid:
                 self.bpms[bpm][1] = time
                 # iterate through all rows with bpm
                 for row in rows:
+                    # visualize beat
+                    self.grid[row, self.begin_grid_index - 2, 0] = '÷' if self.grid[row, self.begin_grid_index - 2, 0] == '-' else '-'
                     # find every runner in a row
                     for x in np.argwhere(self.grid[row, :, 1] == self.runner_chr)[::-1]:
                         x = x[0]
