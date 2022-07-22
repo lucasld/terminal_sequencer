@@ -13,7 +13,6 @@ sounds:  # a sounds key and it's path
 
 
 keyboard:  # keys for different actions
-    set_runner: "key.enter"
     loop_begin: "["
     loop_end: "]"
 
