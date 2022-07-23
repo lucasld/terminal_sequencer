@@ -52,7 +52,8 @@ class Grid:
     
     
     def init_grid(self):
-        self.grid = np.empty((self.HEIGHT - (1 if self.HEIGHT%2 else 2), self.WIDTH-1, 5), dtype='U3')
+        self.grid = np.empty((self.HEIGHT - (1 if self.HEIGHT%2 else 2),
+                             self.WIDTH-1, 5), dtype='U3')
         self.grid[True] = self.empty_space_chr
         self.grid[:, :self.begin_grid_index - 1, 0] = ' '
         self.grid[1::2, :, 0] = ' '

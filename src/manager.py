@@ -2,7 +2,7 @@ import time
 import yaml
 
 from src.grid import Grid
-from src.keyboard import Keyboard
+from src.inputs import Inputs
 from src.sound import Sound
 
 
@@ -12,7 +12,7 @@ class Manager:
         self.config = self.load_config(config_path)
         self.sound_manager = Sound(self.config['sounds'])
         self.grid_manager = Grid(self.config['grid'], self.sound_manager)
-        self.keyboard_manager = Keyboard(self.config['keyboard'], self.grid_manager)
+        self.keyboard_manager = Inputs(self.config['keyboard'], self.grid_manager)
         
 
     def load_config(self, path: str) -> dict:
@@ -27,6 +27,7 @@ class Manager:
         # starting time
         start_time = time.time()
         while True:
+            self.keyboard_manager.mouse_check()
             # current time
             current_time = time.time()
             # move runners

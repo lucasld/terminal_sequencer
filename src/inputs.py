@@ -1,7 +1,8 @@
-from pynput import keyboard
+from pynput import keyboard, mouse
+import curses
 
 
-class Keyboard:
+class Inputs:
 
     def __init__(self, config, grid_manager):
         self.loop_begin = config['loop_begin']
@@ -9,10 +10,16 @@ class Keyboard:
 
         self.grid = grid_manager
 
-        # init listener
-        listener = keyboard.Listener(on_press=self.on_press, on_release=self.on_release)
-        listener.start()
-    
+        # init keyboard listener
+        keyboard_listener = keyboard.Listener(on_press=self.on_press, on_release=self.on_release)
+        keyboard_listener.start()
+
+        # mouse intialization
+        curses.curs_set(0) 
+        self.grid.console.keypad(1) 
+        self.grid.console.nodelay(1)
+        curses.mousemask(1)
+
 
     def on_press(self, key):
         if type(key) == keyboard.Key:
@@ -51,9 +58,19 @@ class Keyboard:
                 self.grid.grid[self.grid.Y, self.grid.X, 0] = key.char
             elif key.char.isnumeric():
                 self.grid.change_number(key.char)
-            
-        
+
+
     def on_release(self, key):
         if key == keyboard.Key.esc:
             # Stop listener
             return False
+        
+        
+    def mouse_check(self):
+        event = self.grid.console.getch() 
+        if event == ord("q"):
+            return 
+        if event == curses.KEY_MOUSE:
+            _, mx, my, _, state = curses.getmouse()
+            self.grid.Y = my
+            self.grid.X = mx
