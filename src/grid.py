@@ -1,8 +1,10 @@
 from ast import JoinedStr
 from ntpath import join
 from numbers import Number
+from os import stat
 import numpy as np
 import curses
+import clipboard
 
 
 class Grid:
@@ -14,9 +16,12 @@ class Grid:
         self.runner_chr = config['runner_chr']
         self.loop_begin_chr = config['loop_begin_chr']
         self.loop_end_chr = config['loop_end_chr']
+        self.bpm_on = config['bpm_on']
+        self.bpm_off = config['bpm_off']
         self.sound_manager = sound_manager
 
         self.begin_grid_index = 9
+        self.end_grid_index = -30
 
         # init console
         self.console = curses.initscr()
@@ -24,9 +29,9 @@ class Grid:
         curses.use_default_colors()
         curses.init_pair(1, curses.COLOR_YELLOW, curses.COLOR_YELLOW)
         curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_BLACK)
-        curses.init_pair(3, curses.COLOR_GREEN, curses.COLOR_BLACK)
+        curses.init_pair(3, curses.COLOR_CYAN, curses.COLOR_BLACK)
         curses.init_pair(4, curses.COLOR_WHITE, 235)
-        curses.init_pair(5, curses.COLOR_GREEN, 235)
+        curses.init_pair(5, curses.COLOR_CYAN, 235)
         curses.init_pair(6, -1, curses.COLOR_WHITE)
         #for i in range(0, curses.COLORS):
         #    curses.init_pair(i + 1, i, -1)
@@ -55,15 +60,53 @@ class Grid:
         self.grid = np.empty((self.HEIGHT - (1 if self.HEIGHT%2 else 2),
                              self.WIDTH-1, 5), dtype='U3')
         self.grid[True] = self.empty_space_chr
-        self.grid[:, :self.begin_grid_index - 1, 0] = ' '
+        # every second row is empty
         self.grid[1::2, :, 0] = ' '
-        self.grid[::2, self.begin_grid_index - 1, 0] = '#'
-        self.grid[1::2, self.begin_grid_index - 1, 0] = '#'
+        # left side menu
+        self.grid[:, :self.begin_grid_index - 1, 0] = ' '
+        self.grid[:, self.begin_grid_index - 1, 0] = '#'
+        #self.grid[1::2, self.begin_grid_index - 1, 0] = '#'
+        # right side menu
+        self.current_sound_index = 0
+        self.selected_key = list(self.sound_manager.sounds.keys())[0]
+        self.grid[:, self.end_grid_index+1:, 0] = ' '
+        self.grid[:, self.end_grid_index+1, 0] = '#'
+        self.write_sound_menu()
+
+
+    def write_sound_menu(self, selected_row=None):
+        sounds = list(self.sound_manager.sounds.items())
+        start_sound = min(self.current_sound_index, len(sounds)-self.grid.shape[0])
+        if start_sound <= 0:
+            start_sound = 0
+            i = 0
+        else:
+            i = 1
+            self.grid[0, self.end_grid_index+2:, 0] = ' '
+        for key, (path, _) in sounds[start_sound:]:
+            # check if we are in the selected row
+            selected = False
+            if selected_row == i:
+                # copy sound to clipboard
+                self.selected_key = key
+                selected = True
+            slash_positions = np.argwhere(np.array(list(path)) == '/')
+            sound_name = path[slash_positions[-2][0]+1:-4]
+            sound_string = list(f"{key} {'*' if selected else '-'} {sound_name}")[:abs(self.end_grid_index)-3]
+            self.grid[i, self.end_grid_index+2:self.end_grid_index+2+len(sound_string), 0] = sound_string
+            i+=1
+            if i > self.grid.shape[0]-(1 if start_sound==len(sounds)-self.grid.shape[0] else 2):
+                break
     
+
+    def place_note(self, note):
+        if self.grid.shape[1] + self.end_grid_index > self.X >= self.begin_grid_index:
+            self.grid[self.Y, self.X, 0] = note
+
 
     def set_runner(self):
         # check if we are in the right row
-        if not self.Y % 2:
+        if not self.Y % 2 and self.X < self.grid.shape[1] + self.end_grid_index:
             x = max(self.begin_grid_index, self.X)
             self.grid[self.Y, x, 1] = self.runner_chr
             self.grid[self.Y, x, 3] = '-1'
@@ -78,7 +121,7 @@ class Grid:
             bpm_position = ''.join(self.grid[self.Y, :, 0]).find('bpm')
             if bpm_position >= 0 and self.X < bpm_position:
                 self.grid[self.Y, self.X, 0] = number
-                new_bpm = int(''.join(self.grid[self.Y, :, 0])[:bpm_position])
+                new_bpm = int(''.join(self.grid[self.Y, :bpm_position, 0]))
                 for bpm, (rows, _) in self.bpms.items():
                     if self.Y in rows:
                         rows.remove(self.Y)
@@ -91,18 +134,22 @@ class Grid:
             # change volume
             vol_position = ''.join(self.grid[self.Y, :, 0]).find('% vol')
             if vol_position >= 0 and self.X < vol_position:
-                new_vol = int(''.join(self.grid[self.Y, :, 0])[:vol_position])
+                self.grid[self.Y, self.X, 0] = number
+                new_vol = int(''.join(self.grid[self.Y, :vol_position, 0]))
                 if new_vol > 100:
                     new_vol = 100
-                self.grid[self.Y, :vol_position, 0] = list(str(new_vol))
+                self.grid[self.Y, :vol_position, 0] = list("%03d" % new_vol)
                 self.volumes[self.Y - 1] = new_vol/100
 
 
     
     def move_coord(self, y: int, x: int, dir: tuple) -> tuple:
         ny, nx = y + dir[0], x + dir[1]
-        if nx == self.begin_grid_index - 1:
+        if self.grid[ny, nx, 0] == '#':
+
+            ny += dir[0]
             nx += dir[1]
+            return ny, nx, False
         if 0 <= nx < self.grid.shape[1] and 0 <= ny < self.grid.shape[0]:
             return ny, nx, True
         return y, x, False
@@ -127,7 +174,10 @@ class Grid:
                 # iterate through all rows with bpm
                 for row in rows:
                     # visualize beat
-                    self.grid[row, self.begin_grid_index - 2, 0] = '÷' if self.grid[row, self.begin_grid_index - 2, 0] == '-' else '-'
+                    if self.grid[row, self.begin_grid_index - 2, 0] == self.bpm_off:
+                        self.grid[row, self.begin_grid_index - 2, 0] = self.bpm_on
+                    else:
+                        self.grid[row, self.begin_grid_index - 2, 0] = self.bpm_off
                     # find every runner in a row
                     for x in np.argwhere(self.grid[row, :, 1] == self.runner_chr)[::-1]:
                         x = x[0]
@@ -169,9 +219,11 @@ class Grid:
                 if self.grid[y, x, 1] == self.empty_space_chr:
                     # use character from channel 0
                     character = self.grid[y, x, 0]
-                    if character == '#':
+                    if character == '#' and x < self.grid.shape[1] + self.end_grid_index + 2:
                         # border color
                         color = curses.color_pair(1)
+                    elif x > self.grid.shape[1] + self.end_grid_index:
+                        color = curses.color_pair(3)
                     elif (y//2)%2:
                         if character==self.empty_space_chr and (x + self.begin_grid_index - 1) % self.ticks == 0:
                             color = curses.color_pair(3)
@@ -190,8 +242,8 @@ class Grid:
                     else:
                         character = self.grid[y, x, 1]
                         color = curses.color_pair(2 if (y//2)%2 else 4)
-                # highlight and play when selector position
-                if y==self.Y and x==self.X:
+                # highlight selector position
+                if (y==self.Y and x==self.X) or (self.Y==y and self.X > self.grid.shape[1]+self.end_grid_index and x>self.grid.shape[1]+self.end_grid_index+1):
                     color = curses.color_pair(6)
                 self.console.addch(y, x, character, color)
         self.console.refresh()

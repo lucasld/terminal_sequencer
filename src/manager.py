@@ -10,7 +10,7 @@ class Manager:
 
     def __init__(self, config_path="config.yml"):
         self.config = self.load_config(config_path)
-        self.sound_manager = Sound(self.config['sounds'])
+        self.sound_manager = Sound(self.config)
         self.grid_manager = Grid(self.config['grid'], self.sound_manager)
         self.keyboard_manager = Inputs(self.config['keyboard'], self.grid_manager)
         

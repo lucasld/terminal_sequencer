@@ -1,4 +1,4 @@
-from pynput import keyboard, mouse
+from pynput import keyboard
 import curses
 
 
@@ -13,6 +13,7 @@ class Inputs:
         # init keyboard listener
         keyboard_listener = keyboard.Listener(on_press=self.on_press, on_release=self.on_release)
         keyboard_listener.start()
+        self.pressed_cmd = False
 
         # mouse intialization
         curses.curs_set(0) 
@@ -47,6 +48,7 @@ class Inputs:
                                                                    (0, -1))
             elif key == key.enter:
                 self.grid.set_runner()
+            self.pressed_cmd = key == key.cmd
         elif type(key) == keyboard.KeyCode:
             if key.char == self.loop_begin:
                 self.grid.grid[self.grid.Y, self.grid.X, 0] = self.grid.loop_begin_chr
@@ -55,7 +57,9 @@ class Inputs:
                 self.grid.grid[self.grid.Y, self.grid.X, 0] = self.grid.loop_end_chr
                 self.grid.grid[self.grid.Y, self.grid.X, 2] = str(sum(self.grid.grid[self.grid.Y, :, 0] == self.grid.loop_end_chr) - 1)
             elif key.char in self.grid.sound_manager.sounds.keys():
-                self.grid.grid[self.grid.Y, self.grid.X, 0] = key.char
+                self.grid.place_note(key.char)
+            elif self.pressed_cmd and key.char == 'v':
+                self.grid.place_note(self.grid.selected_key)
             elif key.char.isnumeric():
                 self.grid.change_number(key.char)
 
@@ -67,10 +71,20 @@ class Inputs:
         
         
     def mouse_check(self):
-        event = self.grid.console.getch() 
+        event = self.grid.console.getch()
         if event == ord("q"):
             return 
         if event == curses.KEY_MOUSE:
             _, mx, my, _, state = curses.getmouse()
             self.grid.Y = my
             self.grid.X = mx
+            # check where mouse was clicked and take action accordingly
+            if mx > self.grid.grid.shape[1] + self.grid.end_grid_index + 1:
+                if my == self.grid.grid.shape[0] - 1:
+                    self.grid.current_sound_index += 6
+                    self.grid.write_sound_menu()
+                elif my == 0:
+                    self.grid.current_sound_index -= 6
+                    self.grid.write_sound_menu()
+                else:
+                    self.grid.write_sound_menu(selected_row=my)
