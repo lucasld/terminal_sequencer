@@ -1,10 +1,5 @@
-from ast import JoinedStr
-from ntpath import join
-from numbers import Number
-from os import stat
 import numpy as np
 import curses
-import clipboard
 
 
 class Grid:
@@ -87,7 +82,6 @@ class Grid:
             # check if we are in the selected row
             selected = False
             if selected_row == i:
-                # copy sound to clipboard
                 self.selected_key = key
                 selected = True
             slash_positions = np.argwhere(np.array(list(path)) == '/')
@@ -145,14 +139,14 @@ class Grid:
     
     def move_coord(self, y: int, x: int, dir: tuple) -> tuple:
         ny, nx = y + dir[0], x + dir[1]
+        if 0 > nx or 0 > ny or self.grid.shape[1] <= nx or self.grid.shape[0] <= ny:
+            return y, x, False
         if self.grid[ny, nx, 0] == '#':
-
             ny += dir[0]
             nx += dir[1]
             return ny, nx, False
         if 0 <= nx < self.grid.shape[1] and 0 <= ny < self.grid.shape[0]:
             return ny, nx, True
-        return y, x, False
 
 
     def _get_start_pos(self, y, x, last_begin_loop) -> tuple:
