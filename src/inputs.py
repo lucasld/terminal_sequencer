@@ -41,11 +41,7 @@ class Inputs:
                                                                    self.grid.X,
                                                                    (0, 1))
             elif key == key.backspace:
-                self.grid.grid[self.grid.Y, self.grid.X, :] = self.grid.empty_space_chr
-                self.grid.change_number('0')
-                self.grid.Y, self.grid.X, _ = self.grid.move_coord(self.grid.Y,
-                                                                   self.grid.X,
-                                                                   (0, -1))
+                self.grid.delete_element()
             elif key == key.enter:
                 self.grid.set_runner()
             self.pressed_cmd = key == key.cmd

@@ -147,6 +147,13 @@ class Grid:
             return ny, nx, False
         if 0 <= nx < self.grid.shape[1] and 0 <= ny < self.grid.shape[0]:
             return ny, nx, True
+    
+
+    def delete_element(self):
+        self.change_number('0')
+        if self.end_grid_index > self.X > self.begin_grid_index:
+            self.grid[self.Y, self.X, :] = self.empty_space_chr
+            self.Y, self.X, _ = self.move_coord(self.Y, self.X, (0, -1))
 
 
     def _get_start_pos(self, y, x, last_begin_loop) -> tuple:
