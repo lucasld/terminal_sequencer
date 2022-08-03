@@ -77,10 +77,10 @@ class Inputs:
             # check where mouse was clicked and take action accordingly
             if mx > self.grid.grid.shape[1] + self.grid.end_grid_index + 1:
                 if my == self.grid.grid.shape[0] - 1:
-                    self.grid.current_sound_index += 6
-                    self.grid.write_sound_menu()
+                    self.grid.first_sound_index += 6
+                    self.grid.write_sound_menu(selected_row=my)
                 elif my == 0:
-                    self.grid.current_sound_index -= 6
-                    self.grid.write_sound_menu()
+                    self.grid.first_sound_index -= 6
+                    self.grid.write_sound_menu(selected_row=my)
                 else:
                     self.grid.write_sound_menu(selected_row=my)

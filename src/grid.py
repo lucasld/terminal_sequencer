@@ -3,8 +3,17 @@ import curses
 
 
 class Grid:
+    """This manages how the grid behaves and is displayed.
+    
+    :param config: this is a dictonary containing all the relevant parameters
+        concerning the grid
+    :type config: dictonary
+    :param sound_manager: a sound manager object
+    :type sound_manager: src.manager.Manager
+    """
     
     def __init__(self, config, sound_manager):
+        """Constructor function"""
         self.ticks = config['ticks']
         self.global_bpm = config['global_bpm']
         self.empty_space_chr = config['empty_space_chr']
@@ -14,24 +23,30 @@ class Grid:
         self.bpm_on = config['bpm_on']
         self.bpm_off = config['bpm_off']
         self.sound_manager = sound_manager
-
+        # size of the left side menu
         self.begin_grid_index = 9
+        # size of the right side menu
         self.end_grid_index = -30
 
         # init console
         self.console = curses.initscr()
         curses.start_color()
         curses.use_default_colors()
+        # setting background-foreground color pairs
+        # menu devisor line
         curses.init_pair(1, curses.COLOR_YELLOW, curses.COLOR_YELLOW)
+        # normal and normal marked 1
         curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_BLACK)
         curses.init_pair(3, curses.COLOR_CYAN, curses.COLOR_BLACK)
+        # normal and normal marked 2
         curses.init_pair(4, curses.COLOR_WHITE, 235)
         curses.init_pair(5, curses.COLOR_CYAN, 235)
+        # highlighted
         curses.init_pair(6, -1, curses.COLOR_WHITE)
-        #for i in range(0, curses.COLORS):
-        #    curses.init_pair(i + 1, i, -1)
+        # get size of the console window
         self.HEIGHT, self.WIDTH = self.console.getmaxyx()
-        self.Y, self.X = 0, 0  # y and x position of the selector
+        # y and x position of the selector
+        self.Y, self.X = 0, 0
 
         # initalize screen
         self.init_grid()
@@ -47,58 +62,76 @@ class Grid:
         for row, vol in self.volumes.items():
             vol_text = list(str(round(vol * 100)) + '% vol')
             self.grid[row+1, :len(vol_text), 0] = vol_text
-        
-
     
     
     def init_grid(self):
+        """Intialize the grid matrix."""
+        # initialize the grid matrix which has to be a bit smaller than the console
         self.grid = np.empty((self.HEIGHT - (1 if self.HEIGHT%2 else 2),
                              self.WIDTH-1, 5), dtype='U3')
+        # place empty space characters everywhere
         self.grid[True] = self.empty_space_chr
-        # every second row is empty
-        self.grid[1::2, :, 0] = ' '
         # left side menu
         self.grid[:, :self.begin_grid_index - 1, 0] = ' '
         self.grid[:, self.begin_grid_index - 1, 0] = '#'
-        #self.grid[1::2, self.begin_grid_index - 1, 0] = '#'
         # right side menu
-        self.current_sound_index = 0
+        self.first_sound_index = 0
         self.selected_key = list(self.sound_manager.sounds.keys())[0]
         self.grid[:, self.end_grid_index+1:, 0] = ' '
         self.grid[:, self.end_grid_index+1, 0] = '#'
+        # add sounds and correponding keys to the sound menu
         self.write_sound_menu()
 
 
-    def write_sound_menu(self, selected_row=None):
+    def write_sound_menu(self, selected_row: int=None):
+        """Write sound names and correponding keys to the right side menu.
+        
+        :param selected_row: index of the selected sound
+        :type selected_row: integer, optional
+        """
+        # list of sound paths
         sounds = list(self.sound_manager.sounds.items())
-        start_sound = min(self.current_sound_index, len(sounds)-self.grid.shape[0])
+        # index of the first sound to display
+        start_sound = min(self.first_sound_index, len(sounds)-self.grid.shape[0])
         if start_sound <= 0:
             start_sound = 0
             i = 0
         else:
             i = 1
-            self.grid[0, self.end_grid_index+2:, 0] = ' '
+            # first row is empty
+            self.grid[0, self.end_grid_index+2:, [0, 2]] = ' '
         for key, (path, _) in sounds[start_sound:]:
             # check if we are in the selected row
-            selected = False
-            if selected_row == i:
+            if selected_row == i or (not selected_row and key == self.selected_key):
                 self.selected_key = key
-                selected = True
+                # mark row as a row to be highlighted
+                self.grid[i, self.end_grid_index+2:, 2] = '#'
+            else:
+                self.grid[i, self.end_grid_index+2:, 2] = self.empty_space_chr
             slash_positions = np.argwhere(np.array(list(path)) == '/')
             sound_name = path[slash_positions[-2][0]+1:-4]
-            sound_string = list(f"{key} {'*' if selected else '-'} {sound_name}")[:abs(self.end_grid_index)-3]
+            sound_string = list(f"{key} - {sound_name}")[:abs(self.end_grid_index)-3]
             self.grid[i, self.end_grid_index+2:self.end_grid_index+2+len(sound_string), 0] = sound_string
             i+=1
-            if i > self.grid.shape[0]-(1 if start_sound==len(sounds)-self.grid.shape[0] else 2):
+            d = 1 if start_sound==len(sounds)-self.grid.shape[0] else 2
+            if i > self.grid.shape[0] - d:
+                if d == 2:
+                    self.grid[i, self.end_grid_index+2:, [0, 2]] = ' '
                 break
     
 
-    def place_note(self, note):
-        if self.grid.shape[1] + self.end_grid_index > self.X >= self.begin_grid_index:
+    def place_note(self, note: str):
+        """Place a certain note at the position of the cursor.
+        
+        :param note: note key to be placed
+        :type note: integer
+        """
+        if self.grid.shape[1] + self.end_grid_index >= self.X >= self.begin_grid_index and not self.Y%2 :
             self.grid[self.Y, self.X, 0] = note
 
 
     def set_runner(self):
+        """Set a runner at the position of the cursor."""
         # check if we are in the right row
         if not self.Y % 2 and self.X < self.grid.shape[1] + self.end_grid_index:
             x = max(self.begin_grid_index, self.X)
@@ -108,8 +141,13 @@ class Grid:
     
     
     def change_number(self, number: str):
-        """Takes number and changes it in the grid at location self.Y and self.X.
-        The function also tries to update the corresponding variable, f.e. self.bpms"""
+        """Takes number and changes it in the grid at the position of the
+        cursor. The function also tries to update the corresponding variable,
+        f.e. self.bpms
+        
+        :param number: number to place at position of the cursor
+        :type number: string
+        """
         if not self.Y % 2:
             # change bpm
             bpm_position = ''.join(self.grid[self.Y, :, 0]).find('bpm')
@@ -130,6 +168,7 @@ class Grid:
             if vol_position >= 0 and self.X < vol_position:
                 self.grid[self.Y, self.X, 0] = number
                 new_vol = int(''.join(self.grid[self.Y, :vol_position, 0]))
+                # limit volume to 100
                 if new_vol > 100:
                     new_vol = 100
                 self.grid[self.Y, :vol_position, 0] = list("%03d" % new_vol)
@@ -138,25 +177,44 @@ class Grid:
 
     
     def move_coord(self, y: int, x: int, dir: tuple) -> tuple:
+        """Calculate new position after taking a step into dir. If the
+        transition is not possible don't move.
+        
+        :param y: y starting position
+        :type y: integer
+        :param x: x starting position
+        :type y: integer
+        :param dir: direction tuple (y, x)
+        :type dir: tuple of integers
+        :returns: resulting position and if transition was possible
+            (y, x, transition_possible?)
+        :rtype: tuple(int, int, bool)
+        """
+        # transition
         ny, nx = y + dir[0], x + dir[1]
+        # transition not possible if y or x are out of bounds
         if 0 > nx or 0 > ny or self.grid.shape[1] <= nx or self.grid.shape[0] <= ny:
             return y, x, False
+        # add step to jump over a #
         if self.grid[ny, nx, 0] == '#':
             ny += dir[0]
             nx += dir[1]
             return ny, nx, False
-        if 0 <= nx < self.grid.shape[1] and 0 <= ny < self.grid.shape[0]:
-            return ny, nx, True
+        #if 0 <= nx < self.grid.shape[1] and 0 <= ny < self.grid.shape[0]:
+        return ny, nx, True
     
 
     def delete_element(self):
+        """Delete an element at the position of the cursor."""
         self.change_number('0')
-        if self.end_grid_index > self.X > self.begin_grid_index:
+        if self.grid.shape[1] + self.end_grid_index >= self.X >= self.begin_grid_index and not self.Y%2:
             self.grid[self.Y, self.X, :] = self.empty_space_chr
-            self.Y, self.X, _ = self.move_coord(self.Y, self.X, (0, -1))
+        self.Y, self.X, _ = self.move_coord(self.Y, self.X, (0, -1))
 
 
     def _get_start_pos(self, y, x, last_begin_loop) -> tuple:
+        """Determines the position 
+        """
         begin_loop_pos = np.argwhere(self.grid[y, :, 0] == self.loop_begin_chr)
         begin_loop_pos = [e for e in begin_loop_pos if e < x]
         if not len(begin_loop_pos):
@@ -220,6 +278,9 @@ class Grid:
                 if self.grid[y, x, 1] == self.empty_space_chr:
                     # use character from channel 0
                     character = self.grid[y, x, 0]
+                    # in each tracks second row we replace the empty-space-character by ' '
+                    if y%2 and character == self.empty_space_chr:
+                        character = ' '
                     if character == '#' and x < self.grid.shape[1] + self.end_grid_index + 2:
                         # border color
                         color = curses.color_pair(1)
@@ -245,6 +306,9 @@ class Grid:
                         color = curses.color_pair(2 if (y//2)%2 else 4)
                 # highlight selector position
                 if (y==self.Y and x==self.X) or (self.Y==y and self.X > self.grid.shape[1]+self.end_grid_index and x>self.grid.shape[1]+self.end_grid_index+1):
+                    color = curses.color_pair(6)
+                # highlight everything that is marked to be highlighted
+                if self.grid[y, x, 2] == '#':
                     color = curses.color_pair(6)
                 self.console.addch(y, x, character, color)
         self.console.refresh()

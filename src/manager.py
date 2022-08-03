@@ -7,16 +7,28 @@ from src.sound import Sound
 
 
 class Manager:
+    """Manager combines inputs (keyboard and mouse), grid displaying and sound
+    playing.
+    
+    :param config_path: path of the config file to use, defaults to 'config.yml'
+    :type config_path: string, optional"""
 
-    def __init__(self, config_path="config.yml"):
-        self.config = self.load_config(config_path)
+    def __init__(self, config_path='config.yml'):
+        """Constructor function"""
+        self.config_path = config_path
+        self.config = self.load_config()
         self.sound_manager = Sound(self.config)
         self.grid_manager = Grid(self.config['grid'], self.sound_manager)
         self.keyboard_manager = Inputs(self.config['keyboard'], self.grid_manager)
         
 
-    def load_config(self, path: str) -> dict:
-        with open(path, "r") as stream:
+    def load_config(self) -> dict:
+        """Load the project config file.
+        
+        :returns: dictonary containing config parameters
+        :rtype: dictonary
+        """
+        with open(self.config_path, 'r') as stream:
             try:
                 return yaml.safe_load(stream)
             except yaml.YAMLError as exc:
@@ -24,6 +36,7 @@ class Manager:
 
 
     def start(self):
+        """Run the application."""
         # starting time
         start_time = time.time()
         while True:
