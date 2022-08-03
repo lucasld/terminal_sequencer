@@ -1,5 +1,7 @@
 # terminal_sequencer
 
+Run by calling "main.py"
+
 ### Goal Features:
 - interaction through a terminal (in a 'grid')
 - individual sequence parameters for each track
