@@ -12,7 +12,7 @@ Start the sequencer by running the `main.py` file.
 ### The sequencer:
 #### Layout
 The sequencer consists of a left and right side menu and a grid in the center. Different tracks are arranged vertically. The *left side* menu contains the bpm and volume settings for the individual tracks. The *right side* menu allows to select a sound from the `/sounds` folder.
-![](empty_grid.png)
+![](imgs/empty_grid.png)
 
 #### Functions
 - each sound is marked by a unique key which can be placed on a track by either typing it or by pressing shift at the desired position
