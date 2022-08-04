@@ -25,7 +25,7 @@ grid:  # parameters related to the grid
     loop_begin_chr: "["
     loop_end_chr: "]"
     bpm_on: "-"
-    bpm_off: "÷"
+    bpm_off: "~"
 
 
 frame_rate: 12
