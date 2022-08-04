@@ -213,7 +213,16 @@ class Grid:
 
 
     def _get_start_pos(self, y, x, last_begin_loop) -> tuple:
-        """Determines the position 
+        """Determines the position of the next start-loop a runner should jump to.
+
+        :param y: y position of the runner
+        :type y: integer
+        :param x: x position of the runner
+        :type x: integer
+        :param last_begin_loop: order-number of last begin loop
+        :type last_begin_loop: integer
+        :returns: new runner position and new order-number
+        :rtype: tuple of integers
         """
         begin_loop_pos = np.argwhere(self.grid[y, :, 0] == self.loop_begin_chr)
         begin_loop_pos = [e for e in begin_loop_pos if e < x]
@@ -227,6 +236,11 @@ class Grid:
     
 
     def move_runners(self, time):
+        """Move all runners that should be moved at given time.
+
+        :param time: current time
+        :type time: float
+        """
         for bpm, (rows, t) in dict(self.bpms).items():
             if bpm > 0 and time - t >= 60/bpm:
                 self.bpms[bpm][1] = time
@@ -270,6 +284,7 @@ class Grid:
 
     
     def draw_grid(self):
+        """Visualize the grid using curses."""
         self.console.erase()
         # iterate through grid
         for y in range(self.grid.shape[0]):
