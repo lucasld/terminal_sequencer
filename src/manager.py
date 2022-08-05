@@ -19,7 +19,8 @@ class Manager:
         self.config = self.load_config()
         self.sound_manager = Sound(self.config)
         self.grid_manager = Grid(self.config['grid'], self.sound_manager)
-        self.keyboard_manager = Inputs(self.config['keyboard'], self.grid_manager)
+        self.input_manager = Inputs(self.config['keyboard'],
+                                       self.grid_manager)
         
 
     def load_config(self) -> dict:
@@ -39,8 +40,9 @@ class Manager:
         """Run the application."""
         # starting time
         start_time = time.time()
-        while True:
-            self.keyboard_manager.mouse_check()
+        while not self.input_manager.esc_pressed:
+            # check for mouse clicks
+            self.input_manager.mouse_check()
             # current time
             current_time = time.time()
             # move runners

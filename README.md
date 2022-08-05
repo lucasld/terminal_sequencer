@@ -22,6 +22,7 @@ The sequencer consists of a left and right side menu and a grid in the center. D
     - open loops by typing "["
     - Place several loops of the same type to create switching loops. The order of "loop-activation" corresponds to the order of placement.
 - set "runners" by pressing enter. "Runners" move over the track with the bpm set for the track and play a sound they move over.
+- press escape to stop application
 
 #### Configuration
 By modifying the `config.yml` file you can configure the sequencer. If you want certain soundfiles to have a certain key see the "sounds" section. Grid parameters like loop-brackets, global-bpm or the runner character can be configured in the "grid" section. Under the "keyboard" section it can be set what keys trigger loop setting. Furthermore there is one global parameter "frame_rate" which allows control of the screen refresh rate. Add sounds by creating a new folder in the `/sounds` folder containing your `.wav`/`.mp3` files.
