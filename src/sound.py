@@ -5,8 +5,14 @@ import pygame
 
 
 class Sound:
-
+    """This manages everything related to the sounds.
+    
+    :param config: config parameters, mainly dictonary containing
+        key - path pairs
+    :type config: dictonary
+    """
     def __init__(self, config):
+        """Constructor function"""
         self.config = config
         self.sounds = config['sounds']
         self.get_sound_paths()
@@ -55,7 +61,7 @@ class Sound:
             # check that character was not already chosen as sound identifier
             if character not in self.sounds.keys():
                 # check that character is anywhere else as function key
-                for key, value in self.config.items():
+                for _, value in self.config.items():
                     if type(value) == dict:
                         if character in value.values():
                             break
@@ -67,6 +73,14 @@ class Sound:
     
 
     def play(self, note: str, volume=1):
+        """Play a note at a certain volume.
+        
+        :param note: identifier-key of the note to be played
+        :type note: string
+        :param volume: float between 0 and 1 that determines the volume of the
+            played sound
+        :type volume: float
+        """
         self.sounds[note][1].set_volume(volume)
         pygame.mixer.Channel(self.current_channel).play(self.sounds[note][1])
         self.current_channel += 1

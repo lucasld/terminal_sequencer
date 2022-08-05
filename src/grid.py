@@ -302,25 +302,31 @@ class Grid:
                     elif x > self.grid.shape[1] + self.end_grid_index:
                         color = curses.color_pair(3)
                     elif (y//2)%2:
-                        if character==self.empty_space_chr and (x + self.begin_grid_index - 1) % self.ticks == 0:
+                        if character==self.empty_space_chr and\
+                           (x + self.begin_grid_index - 1) % self.ticks == 0:
                             color = curses.color_pair(3)
                         else:
                             color = curses.color_pair(2)
                     else:
-                        if character==self.empty_space_chr and (x + self.begin_grid_index - 1) % self.ticks == 0:
+                        if character==self.empty_space_chr and\
+                           (x + self.begin_grid_index - 1) % self.ticks == 0:
                             color = curses.color_pair(5)
                         else:
                             color = curses.color_pair(4)
                 else:
                     # highlight note when runner is on it
-                    if self.grid[y, x, 0] in self.sound_manager.sounds.keys() and self.grid[y, x, 1] == self.runner_chr: 
+                    if self.grid[y, x, 0] in self.sound_manager.sounds.keys() and\
+                       self.grid[y, x, 1] == self.runner_chr: 
                         character = self.grid[y, x, 0]
                         color = curses.color_pair(6)
                     else:
                         character = self.grid[y, x, 1]
                         color = curses.color_pair(2 if (y//2)%2 else 4)
                 # highlight selector position
-                if (y==self.Y and x==self.X) or (self.Y==y and self.X > self.grid.shape[1]+self.end_grid_index and x>self.grid.shape[1]+self.end_grid_index+1):
+                if (y==self.Y and x==self.X) or\
+                        (self.Y==y and\
+                         self.X > self.grid.shape[1]+self.end_grid_index and\
+                         x>self.grid.shape[1]+self.end_grid_index+1):
                     color = curses.color_pair(6)
                 # highlight everything that is marked to be highlighted
                 if self.grid[y, x, 2] == '#':
